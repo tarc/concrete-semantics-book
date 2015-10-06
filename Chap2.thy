@@ -198,4 +198,28 @@ fun eval :: "'a exp \<Rightarrow> ('a \<Rightarrow> int option) \<Rightarrow> in
 
 value "( Mult ( Add ( Var 0 ) ( Cst 0 ) ) Cst 3 )"
 
+value "\<lambda> x. ( if x=0 then Some 2 else None )"
+
+value "(eval
+        ( Mult ( Add ( Var 0 ) ( Cst 0 ) ) Cst 3 )
+        (\<lambda> x. ( if x=0 then Some 3 else None )))"
+
+fun evalp :: "int list \<Rightarrow> int \<Rightarrow> int" where
+  "evalp [] _ = 0" |
+  "evalp (c0 # cs) x = c0 + x * ( evalp cs x )"
+
+fun sump :: "int list \<Rightarrow> int list \<Rightarrow> int list" where
+  "sump [] l1 = l1" |
+  "sump l0 [] = l0" |
+  "sump (x#xs) (y#ys) = (x+y) # ( sump xs ys )"
+
+fun conv :: "int list \<Rightarrow> int list \<Rightarrow> int list" where
+  "conv _ _ = []"
+
+fun coeffs :: "unit exp \<Rightarrow> int list" where
+  "coeffs (Var ()) = [0, 1]" |
+  "coeffs (Cst c ) = [c]" |
+  "coeffs (Add e0 e1) = sump (coeffs e0) (coeffs e1)" |
+  "coeffs (Mul e0 e1) = []"
+
 end
