@@ -213,13 +213,23 @@ fun sump :: "int list \<Rightarrow> int list \<Rightarrow> int list" where
   "sump l0 [] = l0" |
   "sump (x#xs) (y#ys) = (x+y) # ( sump xs ys )"
 
-fun conv :: "int list \<Rightarrow> int list \<Rightarrow> int list" where
-  "conv _ _ = []"
+fun cmulp :: "int \<Rightarrow> int list \<Rightarrow> int list" where
+  "cmulp c [] = []" |
+  "cmulp c (p # ps) = (c*p) # (cmulp c ps)"
+
+fun mulp :: "int list \<Rightarrow> int list \<Rightarrow> int list" where
+  "mulp [] p = []" |
+  "mulp (a # as) p = sump (cmulp a p) (0 # (mulp as p))"
 
 fun coeffs :: "unit exp \<Rightarrow> int list" where
   "coeffs (Var ()) = [0, 1]" |
   "coeffs (Cst c ) = [c]" |
   "coeffs (Add e0 e1) = sump (coeffs e0) (coeffs e1)" |
-  "coeffs (Mul e0 e1) = []"
+  "coeffs (Mul e0 e1) = mulp (coeffs e0) (coeffs e1)"
+
+theorem "Some ( evalp ( coeffs exp ) n) = eval exp (\<lambda> x . (Some n))"
+  apply ( induction exp arbitrary: n)
+  apply ( auto simp add:algebra_simps option_sum_def option_mul_def option_bind_def)
+done
 
 end
