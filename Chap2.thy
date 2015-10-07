@@ -173,16 +173,15 @@ lemma "( nodes ( explode n t ) )  =  ( 2 ^ n ) * ( nodes t ) + ( 2 ^ n ) - 1"
   apply ( auto simp add:algebra_simps )
 done
 
-fun option_bind :: "'a option \<Rightarrow> ( 'a \<Rightarrow> 'b option ) \<Rightarrow> 'b option" (infixr ">\<ge>" 100) where
+fun option_bind :: "'a option \<Rightarrow> ( 'a \<Rightarrow> 'b option ) \<Rightarrow> 'b option" where
   "option_bind None _ = None" |
   "option_bind ( Some a ) f = f a"
 
-definition option_sum :: "int option \<Rightarrow> int option \<Rightarrow> int option" (infixr "+++" 260) where
-  "(option_sum Mx My) = Mx >\<ge> (\<lambda>x . My >\<ge> (\<lambda> y . Some (x+y) ))"
+definition option_sum :: "int option \<Rightarrow> int option \<Rightarrow> int option" where
+  "(option_sum Mx My) = option_bind Mx (\<lambda>x . option_bind My (\<lambda> y . Some (x+y) ))"
 
-definition option_mul :: "int option \<Rightarrow> int option \<Rightarrow> int option" (infixr "***" 260) where
-  "(option_mul Mx My) = Mx >\<ge> (\<lambda>x . My >\<ge> (\<lambda> y . Some (x*y) ))"
-
+definition option_mul :: "int option \<Rightarrow> int option \<Rightarrow> int option" where
+  "(option_mul Mx My) = option_bind Mx (\<lambda>x . option_bind My (\<lambda> y . Some (x*y) ))"
 
 datatype 'a exp =
   Var 'a |
@@ -193,8 +192,8 @@ datatype 'a exp =
 fun eval :: "'a exp \<Rightarrow> ('a \<Rightarrow> int option) \<Rightarrow> int option" where
   "eval ( Var i ) v = ( v i )" |
   "eval ( Cst x ) v = Some x" |
-  "eval ( Add e0 e1 ) v = ( eval e0 v ) +++ ( eval e1 v )" |
-  "eval ( Mul e0 e1 ) v = ( eval e0 v ) *** ( eval e1 v )"
+  "eval ( Add e0 e1 ) v = option_sum ( eval e0 v ) ( eval e1 v )" |
+  "eval ( Mul e0 e1 ) v = option_mul ( eval e0 v ) ( eval e1 v )"
 
 value "( Mult ( Add ( Var 0 ) ( Cst 0 ) ) Cst 3 )"
 
@@ -227,9 +226,13 @@ fun coeffs :: "unit exp \<Rightarrow> int list" where
   "coeffs (Add e0 e1) = sump (coeffs e0) (coeffs e1)" |
   "coeffs (Mul e0 e1) = mulp (coeffs e0) (coeffs e1)"
 
-theorem "Some ( evalp ( coeffs exp ) n) = eval exp (\<lambda> x . (Some n))"
-  apply ( induction exp arbitrary: n)
-  apply ( auto simp add:algebra_simps option_sum_def option_mul_def option_bind_def)
+lemma [simp]: "option_sum (Some x) (Some y) = Some (x + y)"
+  apply ( simp add: option_sum_def )
+done
+
+theorem "Some ( evalp ( coeffs e ) n) = eval e (\<lambda> x . (Some n))"
+  apply ( induction e arbitrary:n )
+  apply ( auto )
 done
 
 end
