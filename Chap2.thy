@@ -212,6 +212,18 @@ fun sump :: "int list \<Rightarrow> int list \<Rightarrow> int list" where
   "sump l0 [] = l0" |
   "sump (x#xs) (y#ys) = (x+y) # ( sump xs ys )"
 
+lemma "evalp xs n + evalp ys n = evalp (sump xs ys ) n"
+proof (induction xs arbitrary:ys n)
+case Nil
+  show ?case by simp
+next
+  have "evalp (a # xs) n + evalp ys n = evalp (sump (a # xs) ys) n"
+  proof (induction ys)
+    case Nil
+      show ?case by simp
+    next
+      have "evalp (sump (a # xs) (aa # ys)) n = evalp ((a+aa) #sump xs ys) n" by (simp) 
+
 fun cmulp :: "int \<Rightarrow> int list \<Rightarrow> int list" where
   "cmulp c [] = []" |
   "cmulp c (p # ps) = (c*p) # (cmulp c ps)"
@@ -230,7 +242,8 @@ lemma [simp]: "option_sum (Some x) (Some y) = Some (x + y)"
   apply ( simp add: option_sum_def )
 done
 
-theorem "Some ( evalp ( coeffs e ) n) = eval e (\<lambda> x . (Some n))"
+
+theorem "eval e (\<lambda> x . (Some n)) = Some ( evalp ( coeffs e ) n)"
   apply ( induction e arbitrary:n )
   apply ( auto )
 done
