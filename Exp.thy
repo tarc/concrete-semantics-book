@@ -9,8 +9,18 @@ fun option_bind :: "'a option \<Rightarrow> ( 'a \<Rightarrow> 'b option ) \<Rig
 definition option_sum :: "int option \<Rightarrow> int option \<Rightarrow> int option" where
   "(option_sum Mx My) = option_bind Mx (\<lambda>x . option_bind My (\<lambda> y . Some (x+y) ))"
 
+lemma [simp]: "option_sum (Some x) (Some y) = Some (x + y)"
+  apply ( simp add: option_sum_def )
+done
+
+
 definition option_mul :: "int option \<Rightarrow> int option \<Rightarrow> int option" where
   "(option_mul Mx My) = option_bind Mx (\<lambda>x . option_bind My (\<lambda> y . Some (x*y) ))"
+
+lemma [simp]: "option_mul (Some x) (Some y) = Some (x * y)"
+  apply ( simp add: option_mul_def )
+done
+
 
 datatype 'a exp =
   Var 'a |
@@ -41,26 +51,28 @@ fun sump :: "int list \<Rightarrow> int list \<Rightarrow> int list" where
   "sump l0 [] = l0" |
   "sump (x#xs) (y#ys) = (x+y) # ( sump xs ys )"
 
-lemma "evalp xs n + evalp ys n = evalp (sump xs ys ) n"
-proof (induction xs arbitrary:ys n)
-case Nil
-  show ?case by simp
-next
-  have "evalp (a # xs) n + evalp ys n = evalp (sump (a # xs) ys) n"
-  proof (induction ys)
-    case Nil
-      show ?case by simp
-    next
-      have "evalp (sump (a # xs) (aa # ys)) n = evalp ((a+aa) #sump xs ys) n" by (simp)
+lemma [simp]: "evalp (sump xs ys ) n = evalp xs n + evalp ys n"
+  apply ( induction xs ys rule: sump.induct )
+  apply ( auto simp add: algebra_simps)
 done
 
 fun cmulp :: "int \<Rightarrow> int list \<Rightarrow> int list" where
   "cmulp c [] = []" |
   "cmulp c (p # ps) = (c*p) # (cmulp c ps)"
 
+lemma [simp]: "evalp ( cmulp c ps ) n = c * evalp ps n"
+  apply ( induction ps )
+  apply ( auto simp add: algebra_simps )
+done
+
 fun mulp :: "int list \<Rightarrow> int list \<Rightarrow> int list" where
   "mulp [] p = []" |
   "mulp (a # as) p = sump (cmulp a p) (0 # (mulp as p))"
+
+lemma [simp]: "evalp ( mulp xs ys ) n = evalp xs n * evalp ys n"
+  apply ( induction xs )
+  apply ( auto simp add: algebra_simps)
+done
 
 fun coeffs :: "unit exp \<Rightarrow> int list" where
   "coeffs (Var ()) = [0, 1]" |
@@ -68,14 +80,11 @@ fun coeffs :: "unit exp \<Rightarrow> int list" where
   "coeffs (Add e0 e1) = sump (coeffs e0) (coeffs e1)" |
   "coeffs (Mul e0 e1) = mulp (coeffs e0) (coeffs e1)"
 
-lemma [simp]: "option_sum (Some x) (Some y) = Some (x + y)"
-  apply ( simp add: option_sum_def )
-done
 
 
 theorem "eval e (\<lambda> x . (Some n)) = Some ( evalp ( coeffs e ) n)"
   apply ( induction e arbitrary:n )
-  apply ( auto )
+  apply ( auto simp add: algebra_simps )
 done
 
 end

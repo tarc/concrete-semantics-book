@@ -173,4 +173,69 @@ lemma "( nodes ( explode n t ) )  =  ( 2 ^ n ) * ( nodes t ) + ( 2 ^ n ) - 1"
   apply ( auto simp add:algebra_simps )
 done
 
+
+
+datatype exp =
+  Var |
+  Const int |
+  Add exp exp |
+  Mult exp exp
+
+fun eval :: "exp \<Rightarrow> int \<Rightarrow> int" where
+  "eval Var i = i" |
+  "eval ( Const c ) i = c" |
+  "eval ( Add e0 e1 ) i = ( eval e0 i ) + ( eval e1 i )" |
+  "eval ( Mult e0 e1 ) i = ( eval e0 i ) * (eval e1 i )"
+
+value "eval (Add (Mult (Const 2) Var ) (Const 3)) i"
+
+
+
+fun evalp :: "int list \<Rightarrow> int \<Rightarrow> int" where
+  "evalp [] i = 0" |
+  "evalp ( c0 # cs ) i = c0 + i * ( evalp cs i )"
+
+
+fun sump :: "int list \<Rightarrow> int list \<Rightarrow> int list" where
+  "sump [] ys = ys" |
+  "sump xs [] = xs" |
+  "sump (x # xs) ( y # ys ) = ( x + y ) # ( sump xs ys )"
+
+lemma [simp]: "evalp (sump p1 p2) x = evalp p1 x + evalp p2 x"
+  apply ( induction p1 p2 rule: sump.induct )
+  apply ( auto simp add: algebra_simps)
+done
+
+
+fun cmulp :: "int \<Rightarrow> int list \<Rightarrow> int list" where
+  "cmulp c [] = []" |
+  "cmulp c ( c0 # cs ) = (c * c0) # ( cmulp c cs )"
+
+lemma [simp]: "evalp (cmulp c cs) x = c * evalp cs x"
+  apply ( induction cs )
+  apply ( auto simp add: algebra_simps )
+done
+
+fun mulp :: "int list \<Rightarrow> int list \<Rightarrow> int list" where
+  "mulp [] _ = []" |
+  "mulp (x # xs) ys = sump ( cmulp x ys ) ( 0 #  mulp xs ys )"
+
+
+lemma [simp]: "evalp (mulp p1 p2) x = evalp p1 x * evalp p2 x"
+  apply ( induction p1 )
+  apply ( auto simp add: algebra_simps )
+done
+
+fun coeffs :: "exp \<Rightarrow> int list" where
+  "coeffs Var = [ 0 , 1 ]" |
+  "coeffs ( Const c ) = [ c ]" |
+  "coeffs ( Add e0 e1 ) = sump ( coeffs e0 ) ( coeffs e1 )" |
+  "coeffs ( Mult e0 e1 ) = mulp ( coeffs e0 ) ( coeffs e1 )"
+
+
+theorem "evalp ( coeffs e ) x = eval e x"
+  apply ( induction e arbitrary: x)
+  apply ( auto simp add:algebra_simps )
+done
+
 end
