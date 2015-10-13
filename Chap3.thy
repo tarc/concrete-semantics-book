@@ -47,7 +47,7 @@ done
 fun asimp :: "aexp \<Rightarrow> aexp" where
   "asimp ( N n ) = N n" |
   "asimp ( V x ) = V x" |
-  "asimp ( Plus a1 a2 ) = plus ( asimp a1 ) ( asimp a2)"
+  "asimp ( Plus a1 a2 ) = plus ( asimp a1 ) ( asimp a2 )"
 
 lemma "aval ( asimp a ) s = aval a s"
   apply ( induction a )
