@@ -85,11 +85,11 @@ fun full_asimp :: "aexp \<Rightarrow> aexp" where
       ( V x               , Plus a2' ( N n2 ) ) \<Rightarrow> ( Plus ( Plus ( V x ) a2' ) ( N  n2 ) ) |
       ( V x               , Plus a21 a22 )      \<Rightarrow> ( Plus ( V x ) ( Plus a21 a22 ) ) |
       ( Plus a1' ( N n1 ) , N n2 )              \<Rightarrow> ( Plus a1' ( N ( n1 + n2 ) ) ) |
-      ( Plus a11 a12      , N n  )              \<Rightarrow> ( Plus ( Plus a11 a12 ) ( N n ) ) |
       ( Plus a1' ( N n )  , V x  )              \<Rightarrow> ( Plus ( Plus a1' ( V x ) ) ( N n ) ) |
-      ( Plus a11 a12      , V x  )              \<Rightarrow> ( Plus ( Plus a11 a12 ) ( V x ) ) |
       ( Plus a1' ( N n1 ) , Plus a2' ( N n2 ) ) \<Rightarrow> ( Plus ( Plus a1' a2' ) (N  (n1 + n2)) ) |
       ( Plus a1' ( N n )  , Plus a21 a22)       \<Rightarrow> ( Plus ( Plus a1' ( Plus a21 a22 ) ) ( N n ) ) |
+      ( Plus a11 a12      , N n  )              \<Rightarrow> ( Plus ( Plus a11 a12 ) ( N n ) ) |
+      ( Plus a11 a12      , V x  )              \<Rightarrow> ( Plus ( Plus a11 a12 ) ( V x ) ) |
       ( Plus a11 a12      , Plus a2' ( N n ) )  \<Rightarrow> ( Plus ( Plus a11 ( Plus  a12 a2' ) ) ( N n ) ) |
       ( Plus a11 a12      , Plus a21 a22 )      \<Rightarrow> ( Plus ( Plus a11 a12 ) ( Plus a21 a22 ) ) )"
 
@@ -97,6 +97,5 @@ lemma "aval ( full_asimp a ) s = aval a s"
   apply ( induction a )
   apply ( auto split: aexp.split)
 done
-
 
 end
