@@ -7,7 +7,7 @@ type_synonym val = int
 type_synonym state = "vname \<Rightarrow> val"
 
 datatype aexp =
-  N int |
+  N val |
   V vname |
   Plus aexp aexp
 
@@ -97,5 +97,26 @@ lemma "aval ( full_asimp a ) s = aval a s"
   apply ( induction a )
   apply ( auto split: aexp.split)
 done
+
+
+
+datatype aexp2 =
+  N val |
+  V vname |
+  Inc vname |
+  Plus aexp2 aexp2
+
+
+fun aval2 :: "aexp2 \<Rightarrow> state \<Rightarrow> ( val \<times> state ) option" where
+  "aval2 ( N i ) s = Some (  i  , s )" |
+  "aval2 ( V x ) s = Some ( s x , s )" |
+  "aval2 ( Inc x ) s = Some ( s x , s ( x := ( s x ) + 1 ) )" |
+  "aval2 ( Plus a1 a2 ) s =
+    ( case ( aval2 a1 s ) of
+      None \<Rightarrow> None |
+      Some ( v1 , s1 ) \<Rightarrow>
+        ( case ( aval2 a2 s1 ) of
+          None \<Rightarrow> None |
+          Some ( v2 , s2 ) \<Rightarrow> Some ( v1 + v2 , s2 ) ) )"
 
 end
