@@ -76,16 +76,13 @@ done
 fun optimal :: "aexp \<Rightarrow> bool" where
   "optimal ( N n ) = True" |
   "optimal ( V x ) = True" |
-  "optimal ( Plus a1 a2 ) =
-    ( case ( a1 , a2 ) of
-      ( N i , N j ) \<Rightarrow> False |
-      ( a1  , a2  ) \<Rightarrow> ( optimal a1 \<and> optimal a2 ) )"|
-  "optimal ( Times a1 a2 ) =
-    ( case ( a1 , a2 ) of
-        ( N i , N j ) \<Rightarrow> False |
-        ( N n , _   ) \<Rightarrow> ( n \<noteq> 0 \<and> n \<noteq> 1 ) |
-        ( _   , N n ) \<Rightarrow> ( n \<noteq> 0 \<and> n \<noteq> 1 ) |
-        ( a1  , a2  ) \<Rightarrow> ( optimal a1 \<and> optimal a2 ) )"
+  "optimal ( Plus ( N i ) ( N j ) ) = False" |
+  "optimal ( Plus a1 a2 ) = ( optimal a1 \<and> optimal a2 )" |
+  "optimal ( Times ( N i ) ( N j ) ) = False" |
+  "optimal ( Times ( N n ) _ ) = ( n \<noteq> 0 \<and> n \<noteq> 1 )" |
+  "optimal ( Times _ ( N n ) ) = ( n \<noteq> 0 \<and> n \<noteq> 1 )" |
+  "optimal ( Times a1 a2 ) = ( optimal a1 \<and> optimal a2 )"
+
 
 lemma "optimal_plus" : "optimal a1 \<Longrightarrow> optimal a2 \<Longrightarrow> optimal (plus a1 a2)"
   apply ( induction a1 a2 rule: plus.induct )
