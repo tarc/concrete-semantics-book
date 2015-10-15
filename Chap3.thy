@@ -100,11 +100,28 @@ done
 
 
 
+fun subst :: "vname \<Rightarrow> aexp \<Rightarrow> aexp \<Rightarrow> aexp" where
+  "subst _ _ ( N n ) = N n" |
+  "subst x t ( V y ) = ( if x = y then t else V y )" |
+  "subst x t ( Plus a1 a2 ) = Plus ( subst x t  a1 ) ( subst x t a2 )"
+
+lemma "substitution_lemma" : "aval ( subst x t e ) s = aval e ( s ( x := aval t s ) )"
+  apply ( induction e )
+  apply ( auto )
+done
+
+lemma "subst_equiv" : "aval a1 s = aval a2 s \<Longrightarrow> aval ( subst x a1 e ) s = aval ( subst x a2 e ) s"
+  apply ( simp add: substitution_lemma )
+done
+
+
+
 datatype aexp2 =
   N val |
   V vname |
   Inc vname |
-  Plus aexp2 aexp2
+  Plus aexp2 aexp2 |
+  Div aexp2 aexp2
 
 
 fun aval2 :: "aexp2 \<Rightarrow> state \<Rightarrow> ( val \<times> state ) option" where
@@ -117,6 +134,38 @@ fun aval2 :: "aexp2 \<Rightarrow> state \<Rightarrow> ( val \<times> state ) opt
       Some ( v1 , s1 ) \<Rightarrow>
         ( case ( aval2 a2 s1 ) of
           None \<Rightarrow> None |
-          Some ( v2 , s2 ) \<Rightarrow> Some ( v1 + v2 , s2 ) ) )"
+          Some ( v2 , s2 ) \<Rightarrow> Some ( v1 + v2 , s2 ) ) )" |
+  "aval2 ( Div a1 a2 ) s =
+    ( case ( aval2 a2 s ) of
+      None \<Rightarrow> None |
+      Some ( v1 , s1 ) \<Rightarrow> ( if v1 = 0 then None else
+        ( case ( aval2 a1 s1 ) of
+          None \<Rightarrow> None |
+          Some ( v2 , s2 ) \<Rightarrow> Some ( v1 div v2 , s2 ) ) ) )"
+
+
+
+datatype lexp =
+  Nl int |
+  Vl vname |
+  Plusl lexp lexp |
+  LET vname lexp lexp
+
+fun lval :: "lexp \<Rightarrow> state \<Rightarrow> int" where
+  "lval ( Nl n ) s = n" |
+  "lval ( Vl x ) s = s x" |
+  "lval ( Plusl a1 a2 ) s = lval a1 s + lval a2 s" |
+  "lval ( LET x a1 a2 ) s = lval a2 ( s ( x := lval a1 s ) )"
+
+fun inline :: "lexp \<Rightarrow> aexp" where
+  "inline ( Nl n ) = aexp.N n" |
+  "inline ( Vl x ) = aexp.V x" |
+  "inline ( Plusl a1 a2 ) = aexp.Plus ( inline a1 ) ( inline a2 )" |
+  "inline ( LET x t e ) = subst x ( inline t ) ( inline e )"
+
+lemma "lval l s = aval ( inline l ) s"
+  apply ( induction l  arbitrary: s )
+  apply ( auto simp add: substitution_lemma)
+done
 
 end
