@@ -49,7 +49,7 @@ fun asimp :: "aexp \<Rightarrow> aexp" where
   "asimp ( V x ) = V x" |
   "asimp ( Plus a1 a2 ) = plus ( asimp a1 ) ( asimp a2 )"
 
-lemma "aval ( asimp a ) s = aval a s"
+lemma "assimp_correct" : "aval ( asimp a ) s = aval a s"
   apply ( induction a )
   apply ( auto simp add: aval_plus )
 done
@@ -166,6 +166,87 @@ fun inline :: "lexp \<Rightarrow> aexp" where
 lemma "lval l s = aval ( inline l ) s"
   apply ( induction l  arbitrary: s )
   apply ( auto simp add: substitution_lemma)
+done
+
+
+
+
+datatype bexp =
+  Bc bool |
+  Not bexp |
+  And bexp bexp |
+  Less aexp aexp
+
+fun bval :: "bexp \<Rightarrow> state \<Rightarrow> bool" where
+  "bval ( Bc v ) s = v" |
+  "bval ( Not b ) s = ( \<not> bval b s )" |
+  "bval ( And b1 b2 ) s = ( bval b1 s \<and> bval b2 s )" |
+  "bval ( Less a1 a2 ) s = ( aval a1 s < aval a2 s )"
+
+
+
+fun not :: "bexp \<Rightarrow> bexp" where
+  "not ( Bc True ) = Bc False" |
+  "not ( Bc False ) = Bc True" |
+  "not b = Not b"
+
+lemma "not_lemma" : "bval ( not b ) s = bval ( Not b ) s"
+  apply ( induction b )
+  apply ( auto )
+done
+
+
+
+fun "and" :: "bexp \<Rightarrow> bexp \<Rightarrow> bexp" where
+  "and ( Bc True ) b = b" |
+  "and b ( Bc True ) = b" |
+  "and ( Bc False ) _ = Bc False" |
+  "and _ ( Bc False ) = Bc False" |
+  "and b1 b2 = And b1 b2"
+
+lemma "and_lemma" : "bval ( and b1 b2 ) s = bval ( And b1 b2 ) s"
+  apply ( induction b1 b2 rule: and.induct )
+  apply ( auto )
+done
+
+
+
+fun less :: "aexp \<Rightarrow> aexp \<Rightarrow> bexp" where
+  "less ( aexp.N n1 ) ( aexp.N n2 ) = Bc ( n1 < n2 )" |
+  "less a1 a2 = Less a1 a2"
+
+lemma "less_lemma" : "bval ( less a1 a2 ) s = bval ( Less a1 a2 ) s"
+  apply ( induction a1 a2 rule: less.induct )
+  apply ( auto )
+done
+
+
+
+fun bsimp :: "bexp \<Rightarrow> bexp" where
+  "bsimp ( Bc v ) = Bc v" |
+  "bsimp ( Not b ) = not ( bsimp b )" |
+  "bsimp ( And b1 b2 ) = and ( bsimp b1 ) ( bsimp b2 )" |
+  "bsimp ( Less a1 a2 ) = less ( asimp a1 ) ( asimp a2 )"
+
+lemma "bval ( bsimp b ) = bval b"
+  apply ( induction b rule: bsimp.induct )
+  apply ( auto split: bexp.split simp: not_lemma and_lemma less_lemma assimp_correct)
+done
+
+
+
+definition Le :: "aexp \<Rightarrow> aexp \<Rightarrow> bexp" where
+  "Le a1 a2 = Not ( Less a2 a1 )"
+
+lemma "bval ( Le a1 a2 ) s = ( aval a1 s \<le> aval a2 s )"
+  apply ( auto simp add: Le_def)
+done
+
+definition Eq :: "aexp \<Rightarrow> aexp \<Rightarrow> bexp" where
+  "Eq a1 a2 = And ( Le a1 a2 ) ( Le a2 a1 )"
+
+lemma "bval ( Eq a1 a2 ) s = ( aval a1 s = aval a2 s)"
+  apply ( auto simp add: Eq_def Le_def )
 done
 
 end
