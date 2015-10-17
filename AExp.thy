@@ -22,6 +22,17 @@ fun aval :: "aexp \<Rightarrow> state \<Rightarrow> val" where
 
 
 
+definition null_state ("<>") where
+  "null_state \<equiv> \<lambda>x. 0"
+syntax
+  "_State" :: "updbinds => 'a" ("<_>")
+translations
+  "_State ms" == "_Update <> ms"
+
+value "aval (Plus (V ''x'') (N 5)) <''x'' := 7>"
+
+
+
 fun plus :: "aexp \<Rightarrow> aexp \<Rightarrow> aexp" where
   "plus ( N i1 ) ( N i2 ) = N ( i1 + i2 )"|
   "plus ( N i ) a = ( if  i = 0  then  a  else (  Plus ( N i ) a  ) )" |
