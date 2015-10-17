@@ -12,6 +12,18 @@ datatype aexp =
   Plus aexp aexp
 
 
+
+definition null_state ("<>") where
+  "null_state \<equiv> \<lambda>x. 0"
+syntax
+  "_State" :: "updbinds => 'a" ("<_>")
+translations
+  "_State ms" == "_Update <> ms"
+
+value "aval (Plus (V ''x'') (N 5)) <''x'' := 7>"
+
+
+
 fun aval :: "aexp \<Rightarrow> state \<Rightarrow> val" where
   "aval (N n) s = n" |
   "aval (V x) s = s x" |
@@ -396,5 +408,46 @@ lemma "is_nnf b \<Longrightarrow> is_dnf ( dnf_of_nnf b )"
   apply ( induction b rule: dnf_of_nnf.induct )
   apply ( auto simp: dnf_if_nnf dist_AND_preserves_dnf )
 done
+
+
+
+datatype instr =
+  LOADI val |
+  LOAD vname |
+  ADD
+
+type_synonym stack = "val list"
+
+abbreviation "hd2 xs \<equiv> hd ( tl xs )"
+abbreviation "tl2 xs \<equiv> tl ( tl xs )"
+
+
+
+fun exec1 :: "instr \<Rightarrow> state \<Rightarrow> stack \<Rightarrow> stack" where
+  "exec1 ( LOADI n ) _ stk = n # stk" |
+  "exec1 ( LOAD x ) s stk = ( s x ) # stk" |
+  "exec1 ( ADD ) _ stk = ( hd2 stk + hd stk ) # tl2 stk"
+
+fun exec :: "instr list \<Rightarrow> state \<Rightarrow> stack \<Rightarrow> stack" where
+  "exec [] _ stk = stk" |
+  "exec ( i # is ) s stk = exec is s ( exec1 i s stk )"
+
+
+
+fun comp :: "aexp \<Rightarrow> instr list" where
+  "comp ( aexp.N n ) = [ LOADI n ]" |
+  "comp ( aexp.V x ) = [ LOAD x ]" |
+  "comp ( aexp.Plus e1 e2 ) = comp e1 @ comp e2 @ [ ADD ]"
+
+lemma "exec_concat" : "exec ( is1 @ is2 ) s stk = exec is2 s ( exec is1 s stk )"
+  apply ( induction is1 arbitrary: is2 s stk )
+  apply ( auto )
+done
+
+lemma "exec ( comp a ) s stk = aval a s # stk"
+  apply ( induction a arbitrary: s stk )
+  apply ( auto simp: exec_concat )
+done
+
 
 end
