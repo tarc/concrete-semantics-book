@@ -303,7 +303,8 @@ fun pbval :: "pbexp \<Rightarrow> ( vname \<Rightarrow> bool ) \<Rightarrow> boo
 
 fun is_nnf :: "pbexp \<Rightarrow> bool" where
   "is_nnf ( VAR _ ) = True" |
-  "is_nnf ( NOT p ) = ( case p of ( VAR _ ) \<Rightarrow> True | _ \<Rightarrow> False )" |
+  "is_nnf ( NOT ( VAR x ) ) = True" |
+  "is_nnf ( NOT b ) = False " |
   "is_nnf ( AND p1 p2 ) = ( is_nnf p1 \<and> is_nnf p2 )" |
   "is_nnf ( OR p1 p2 ) = ( is_nnf p1 \<and> is_nnf p2 )"
 
@@ -338,19 +339,62 @@ fun or_free :: "pbexp \<Rightarrow> bool" where
 
 fun is_dnf :: "pbexp \<Rightarrow> bool" where
   "is_dnf ( VAR _ ) = True" |
-  "is_dnf ( NOT b ) = ( case b of VAR _ \<Rightarrow> True | _ \<Rightarrow> False )" |
+  "is_dnf ( NOT ( VAR x ) ) = True" |
+  "is_dnf ( NOT b ) = False" |
   "is_dnf ( OR b1 b2 ) = ( is_dnf b1 \<and> is_dnf b2 )" |
   "is_dnf ( AND b1 b2 ) = ( or_free b1 \<and> or_free b2 \<and> is_nnf b1 \<and> is_nnf b2 )"
+
+lemma "nnf_if_dnf" : "is_dnf b \<Longrightarrow> is_nnf b"
+  apply ( induction b rule: is_dnf.induct )
+  apply ( auto )
+done
+
+fun dist_AND :: "pbexp \<Rightarrow> pbexp \<Rightarrow> pbexp" where
+  "dist_AND ( VAR x1 ) ( VAR x2 ) = AND ( VAR x1 ) ( VAR x2 )" |
+  "dist_AND ( VAR x ) ( NOT b ) = AND ( VAR x ) ( NOT b)" |
+  "dist_AND ( NOT b ) ( VAR x ) = AND ( NOT b ) ( VAR x )" |
+  "dist_AND ( NOT b1 ) ( NOT b2 ) = AND ( NOT b1 ) ( NOT b2 )" |
+  "dist_AND ( OR b1 b2 ) b = OR ( dist_AND b1 b ) ( dist_AND b2 b )" |
+  "dist_AND b ( OR b1 b2 ) = OR ( dist_AND b b1 ) ( dist_AND b b2 )" |
+  "dist_AND ( AND b1 b2 ) b = AND ( AND b1 b2 ) b" |
+  "dist_AND b ( AND b1 b2 ) = AND b ( AND b1 b2 )"
+
+lemma "dist_AND_correct" : "pbval ( dist_AND b1 b2 ) s = pbval ( AND b1 b2 ) s"
+  apply ( induction b1 b2 rule: dist_AND.induct )
+  apply ( auto )
+done
+
+lemma "or_free_if_dnf" : "is_dnf (NOT b) \<Longrightarrow> or_free b"
+  apply ( induction b )
+  apply ( auto )
+done
+
+lemma "dist_AND_preserves_dnf" : "is_dnf b1 \<Longrightarrow> is_dnf b2 \<Longrightarrow> is_dnf ( dist_AND b1 b2 )"
+  apply ( induction b1 b2 rule: dist_AND.induct )
+  apply ( auto simp: nnf_if_dnf or_free_if_dnf)
+done
+
+
 
 fun dnf_of_nnf :: "pbexp \<Rightarrow> pbexp" where
   "dnf_of_nnf ( VAR x ) = VAR x" |
   "dnf_of_nnf ( NOT b ) = NOT b" |
   "dnf_of_nnf ( OR b1 b2 ) = OR ( dnf_of_nnf b1 ) ( dnf_of_nnf b2 )" |
-  "dnf_of_nnf ( AND b1 b2 ) =
-    ( case ( dnf_of_nnf b1 , dnf_of_nnf b2 ) of
-      ( OR b11 b12 , OR b21 b22 ) \<Rightarrow>
-          ( OR 
-              ( OR ( AND b11 b21 ) ( AND b12 b21 ) )
-              ( OR ( AND b11 b22 ) ( AND b12 b22 ) ) ) )"
+  "dnf_of_nnf ( AND b1 b2 ) = dist_AND ( dnf_of_nnf b1 ) ( dnf_of_nnf b2 )"
+
+lemma "pbval ( dnf_of_nnf b ) s = pbval b s"
+  apply ( induction b )
+  apply ( auto simp add: dist_AND_correct )
+done
+
+lemma "dnf_if_nnf" : "is_nnf (NOT b) \<Longrightarrow> is_dnf (NOT b)"
+  apply ( induction b )
+  apply ( auto )
+done
+
+lemma "is_nnf b \<Longrightarrow> is_dnf ( dnf_of_nnf b )"
+  apply ( induction b rule: dnf_of_nnf.induct )
+  apply ( auto simp: dnf_if_nnf dist_AND_preserves_dnf )
+done
 
 end
