@@ -249,4 +249,108 @@ lemma "bval ( Eq a1 a2 ) s = ( aval a1 s = aval a2 s)"
   apply ( auto simp add: Eq_def Le_def )
 done
 
+
+
+datatype ifexp =
+  Bc2 bool |
+  If ifexp ifexp ifexp |
+  Less2 aexp aexp
+
+fun ifval :: "ifexp \<Rightarrow> state \<Rightarrow> bool" where
+  "ifval ( Bc2 b ) s = b" |
+  "ifval ( If i t e ) s = ( if ( ifval i s ) then ( ifval t s ) else ( ifval e s ) )" |
+  "ifval ( Less2 a1 a2 ) s = ( aval a1 s < aval a2 s )"
+
+fun b2ifexp :: "bexp \<Rightarrow> ifexp" where
+  "b2ifexp ( Bc b ) = Bc2 b" |
+  "b2ifexp ( Not b ) = If ( b2ifexp b ) ( Bc2 False ) ( Bc2 True )" |
+  "b2ifexp ( And b1 b2 ) = If ( b2ifexp b1 ) ( b2ifexp b2 ) ( Bc2 False )" |
+  "b2ifexp ( Less a1 a2 ) = Less2 a1 a2"
+
+lemma "ifval ( b2ifexp b ) s = bval b s"
+  apply ( induction b )
+  apply ( auto )
+done
+
+fun if2bexp :: "ifexp \<Rightarrow> bexp" where
+  "if2bexp ( Bc2 b ) = Bc b" |
+  "if2bexp ( If i t e ) =
+    And
+      ( Not (  And ( if2bexp i )  ( Not ( if2bexp t ) )  ) )
+      ( Not (  And ( Not ( if2bexp i ) )  ( Not ( if2bexp e ) )  ) )" |
+  "if2bexp ( Less2 a1 a2 ) = Less a1 a2"
+
+lemma "bval ( if2bexp i ) s = ifval i s"
+  apply ( induction i )
+  apply ( auto )
+done
+
+
+
+datatype pbexp =
+  VAR vname |
+  NOT pbexp |
+  AND pbexp pbexp |
+  OR pbexp pbexp
+
+fun pbval :: "pbexp \<Rightarrow> ( vname \<Rightarrow> bool ) \<Rightarrow> bool" where
+  "pbval ( VAR x ) s = s x" |
+  "pbval ( NOT p ) s = ( \<not> pbval p s )" |
+  "pbval ( AND p1 p2 ) s = ( pbval p1 s \<and> pbval p2 s )" |
+  "pbval ( OR p1 p2 ) s = ( pbval p1 s \<or> pbval p2 s )"
+
+
+
+fun is_nnf :: "pbexp \<Rightarrow> bool" where
+  "is_nnf ( VAR _ ) = True" |
+  "is_nnf ( NOT p ) = ( case p of ( VAR _ ) \<Rightarrow> True | _ \<Rightarrow> False )" |
+  "is_nnf ( AND p1 p2 ) = ( is_nnf p1 \<and> is_nnf p2 )" |
+  "is_nnf ( OR p1 p2 ) = ( is_nnf p1 \<and> is_nnf p2 )"
+
+
+
+fun nnf :: "pbexp \<Rightarrow> pbexp" where
+  "nnf ( VAR x ) = VAR x" |
+  "nnf ( NOT ( VAR x ) ) = NOT ( VAR x )" |
+  "nnf ( NOT ( NOT b ) ) = nnf b" |
+  "nnf ( NOT ( AND p1 p2 ) ) = OR  ( nnf ( NOT p1 ) )  ( nnf ( NOT p2 ) )" |
+  "nnf ( NOT ( OR p1 p2 ) ) = AND  ( nnf ( NOT p1 ) )  ( nnf ( NOT p2 ) )" |
+  "nnf ( AND p1 p2 ) = AND ( nnf p1 ) ( nnf p2 )" |
+  "nnf ( OR p1 p2 ) = OR ( nnf p1 ) ( nnf p2 )"
+
+lemma "is_nnf ( nnf b )"
+  apply ( induction b rule: nnf.induct )
+  apply ( auto )
+done
+
+lemma "pbval ( nnf b ) s = pbval b s"
+  apply ( induction b rule: nnf.induct  )
+  apply ( auto split: pbexp.split )
+done
+
+
+
+fun or_free :: "pbexp \<Rightarrow> bool" where
+  "or_free ( VAR _ ) = True" |
+  "or_free ( NOT b ) = ( or_free b )" |
+  "or_free ( OR _ _ ) = False" |
+  "or_free ( AND b1 b2 ) = ( or_free b1 \<and> or_free b2 )"
+
+fun is_dnf :: "pbexp \<Rightarrow> bool" where
+  "is_dnf ( VAR _ ) = True" |
+  "is_dnf ( NOT b ) = ( case b of VAR _ \<Rightarrow> True | _ \<Rightarrow> False )" |
+  "is_dnf ( OR b1 b2 ) = ( is_dnf b1 \<and> is_dnf b2 )" |
+  "is_dnf ( AND b1 b2 ) = ( or_free b1 \<and> or_free b2 \<and> is_nnf b1 \<and> is_nnf b2 )"
+
+fun dnf_of_nnf :: "pbexp \<Rightarrow> pbexp" where
+  "dnf_of_nnf ( VAR x ) = VAR x" |
+  "dnf_of_nnf ( NOT b ) = NOT b" |
+  "dnf_of_nnf ( OR b1 b2 ) = OR ( dnf_of_nnf b1 ) ( dnf_of_nnf b2 )" |
+  "dnf_of_nnf ( AND b1 b2 ) =
+    ( case ( dnf_of_nnf b1 , dnf_of_nnf b2 ) of
+      ( OR b11 b12 , OR b21 b22 ) \<Rightarrow>
+          ( OR 
+              ( OR ( AND b11 b21 ) ( AND b12 b21 ) )
+              ( OR ( AND b11 b22 ) ( AND b12 b22 ) ) ) )"
+
 end
