@@ -94,7 +94,12 @@ lemma star_trans : "star r x y \<Longrightarrow> star r y z \<Longrightarrow> st
   apply ( metis step )
 done
 
-
+lemma rev_start : "star r x y \<Longrightarrow> r y z \<Longrightarrow> star r x z"
+  apply ( induction rule: star.induct )
+  apply ( rule step )
+  apply ( simp_all  add: step refl)
+  apply ( rule refl )
+done
 
 inductive palindrome :: "'a list \<Rightarrow> bool" where
   empty : "palindrome []" |
@@ -104,6 +109,19 @@ inductive palindrome :: "'a list \<Rightarrow> bool" where
 lemma "palindrome xs  \<Longrightarrow>  rev xs = xs"
   apply ( induction rule: palindrome.induct )
   apply ( simp_all )
+done
+
+
+
+inductive star' :: "('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> 'a \<Rightarrow> 'a \<Rightarrow> bool" for r where
+  refl' : "star' r x x" |
+  step' : "star' r x y  \<Longrightarrow>  r y z  \<Longrightarrow>  star' r x z"
+
+
+lemma "star' r x y \<Longrightarrow> star r x y"
+  apply ( induction rule: star'.induct )
+  apply ( rule refl )
+  apply ( simp add: rev_start )
 done
 
 
