@@ -141,5 +141,15 @@ lemma "star r x y \<Longrightarrow> star' r x y"
 done
 
 
+inductive iter :: "( 'a \<Rightarrow> 'a \<Rightarrow> bool ) \<Rightarrow> nat \<Rightarrow> 'a \<Rightarrow> 'a \<Rightarrow> bool" for r where
+  refl_i : "iter r 0 x x" |
+  step_i : "r x y \<Longrightarrow> iter r n y z \<Longrightarrow> iter r ( n + 1 ) x z"
+
+lemma "star r x y \<Longrightarrow> \<exists> n . iter r n x y"
+  apply ( induction rule: star.induct )
+  apply ( metis refl_i )
+  apply ( metis step_i )
+done
+
 
 end
