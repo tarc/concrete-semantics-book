@@ -152,4 +152,17 @@ lemma "star r x y \<Longrightarrow> \<exists> n . iter r n x y"
 done
 
 
+datatype alpha = a | b
+
+inductive S :: "alpha list \<Rightarrow> bool" where
+  emptyS  : "S []" |
+  middl   : "S w \<Longrightarrow> S ( a # w @ [b] )" |
+  doubl   : "S w \<Longrightarrow> S ( w @ w )"
+
+inductive T :: "alpha list \<Rightarrow> bool" where
+  emptyT  : "T []" |
+  alter   : "T w \<Longrightarrow> T ( w @ a # w @ [b] )"
+
+
+
 end
