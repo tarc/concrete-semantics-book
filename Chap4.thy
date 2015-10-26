@@ -94,7 +94,7 @@ lemma star_trans : "star r x y \<Longrightarrow> star r y z \<Longrightarrow> st
   apply ( metis step )
 done
 
-lemma rev_start : "star r x y \<Longrightarrow> r y z \<Longrightarrow> star r x z"
+lemma rev_star : "star r x y \<Longrightarrow> r y z \<Longrightarrow> star r x z"
   apply ( induction rule: star.induct )
   apply ( rule step )
   apply ( simp_all  add: step refl)
@@ -121,7 +121,23 @@ inductive star' :: "('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> 'a \<
 lemma "star' r x y \<Longrightarrow> star r x y"
   apply ( induction rule: star'.induct )
   apply ( rule refl )
-  apply ( simp add: rev_start )
+  apply ( simp add: rev_star )
+done
+
+
+lemma rev_star' : "star' r y z  \<Longrightarrow>  r x y  \<Longrightarrow>  star' r x z"
+  apply ( induction rule: star'.induct )
+  apply ( rule step' [of "r" "x" "x"] )
+  apply ( rule refl' )
+  apply ( assumption )
+  apply ( metis step')
+done
+
+
+lemma "star r x y \<Longrightarrow> star' r x y"
+  apply ( induction rule: star.induct )
+  apply ( rule refl' )
+  apply ( metis rev_star' )
 done
 
 
