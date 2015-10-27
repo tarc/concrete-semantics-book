@@ -157,12 +157,35 @@ datatype alpha = a | b
 inductive S :: "alpha list \<Rightarrow> bool" where
   emptyS  : "S []" |
   middl   : "S w \<Longrightarrow> S ( a # w @ [b] )" |
-  doubl   : "S w \<Longrightarrow> S ( w @ w )"
+  doubl   : "S w \<Longrightarrow> S v \<Longrightarrow> S ( w @ v )"
 
 inductive T :: "alpha list \<Rightarrow> bool" where
   emptyT  : "T []" |
-  alter   : "T w \<Longrightarrow> T ( w @ a # w @ [b] )"
+  alter   : "T w \<Longrightarrow> T v \<Longrightarrow> T ( w @ a # v @ [b] )"
 
+lemma "T w \<Longrightarrow> S w"
+  apply ( induction rule: T.induct )
+  apply ( rule emptyS )
+  apply ( rule doubl )
+  apply ( assumption )
+  apply ( rule middl )
+  apply ( assumption )
+done
 
+lemma app_emp : "T ([] @ a # w @ [b]) \<Longrightarrow> T ( a # w @ [b])"
+  apply ( auto )
+done
+
+lemma doublT : "T w \<Longrightarrow> T v \<Longrightarrow> T ( w @ v)"
+  apply ( induction rule: T.induct )
+  apply ( auto )
+
+lemma "S w \<Longrightarrow> T w"
+  apply ( induction rule: S.induct )
+  apply ( rule emptyT )
+  apply ( rule app_emp )
+  apply ( rule alter )
+  apply ( rule emptyT )
+  apply ( assumption )
 
 end
