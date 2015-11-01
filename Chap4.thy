@@ -252,4 +252,80 @@ lemma "aval a0 s = v \<Longrightarrow> aval_r a0 s v"
   apply ( rule aval_r_aval )
 done
 
+
+
+
+
+datatype instr =
+  LOADI val |
+  LOAD vname |
+  ADD
+
+type_synonym stack = "val list"
+
+abbreviation "hd2 xs \<equiv> hd ( tl xs )"
+abbreviation "tl2 xs \<equiv> tl ( tl xs )"
+
+
+fun exec1 :: "instr \<Rightarrow> state \<Rightarrow> stack \<Rightarrow> stack" where
+  "exec1 ( LOADI n ) _ stk = n # stk" |
+  "exec1 ( LOAD x ) s stk = ( s x ) # stk" |
+  "exec1 ( ADD ) _ stk = ( hd2 stk + hd stk ) # tl2 stk"
+
+fun exec :: "instr list \<Rightarrow> state \<Rightarrow> stack \<Rightarrow> stack" where
+  "exec [] _ stk = stk" |
+  "exec ( i # is ) s stk = exec is s ( exec1 i s stk )"
+
+
+inductive ok1 :: "nat \<Rightarrow> instr \<Rightarrow> nat \<Rightarrow> bool" for n where
+  ok1LOADI : "ok1 n ( LOADI c ) ( n + 1 )" |
+  ok1LOAD  : "ok1 n ( LOAD x ) ( n + 1 )" |
+  ok1ADD   : "n\<ge>2 \<Longrightarrow> ok1 n ADD ( n - 1 )"
+
+lemma ok1_correct :
+    "ok1 n i n' \<Longrightarrow> length stk = n \<Longrightarrow> length ( exec1 i s stk ) = n'"
+  apply ( induction rule: ok1.induct )
+  apply ( simp_all )
+done
+
+
+inductive ok :: "nat \<Rightarrow> instr list \<Rightarrow> nat \<Rightarrow> bool" where
+  ok_refl : "ok n [] n" |
+  ok_step : "ok1 n i n1  \<Longrightarrow>  ok n1 is n2  \<Longrightarrow>  ok n ( i # is ) n2"
+
+
+lemma "ok n is n' \<Longrightarrow> length stk = n \<Longrightarrow> length ( exec is s stk ) = n'"
+  apply ( induction arbitrary: stk rule: ok.induct )
+  apply ( auto )
+  apply ( metis ok1_correct )
+done
+
+
+
+fun comp :: "aexp \<Rightarrow> instr list" where
+  "comp ( aexp.N n ) = [ LOADI n ]" |
+  "comp ( aexp.V x ) = [ LOAD x ]" |
+  "comp ( aexp.Plus e1 e2 ) = comp e1 @ comp e2 @ [ ADD ]"
+
+fun stack_size1 :: "instr \<Rightarrow> nat \<Rightarrow> nat" where
+  "stack_size1 ( LOADI c ) n = (n + 1)" |
+  "stack_size1 ( LOAD  x ) n = (n + 1)" |
+  "stack_size1 ADD n = ( n - 1 )"
+
+fun stack_size :: "instr list \<Rightarrow> nat \<Rightarrow> nat" where
+  "stack_size [] n = n" |
+  "stack_size ( i # is ) n = stack_size is ( stack_size1 i n )"
+
+lemma "ok n ( comp a0 ) ( stack_size ( comp a0 ) n )"
+  apply ( induction a0 arbitrary: n rule: comp.induct )
+  apply ( auto )
+  apply ( rule ok_step )
+  apply ( rule ok1LOADI )
+  apply ( simp )
+  apply ( rule ok_refl )
+  apply ( rule ok_step )
+  apply ( rule ok1LOAD )
+  apply ( simp )
+  apply ( rule ok_refl )
+
 end
