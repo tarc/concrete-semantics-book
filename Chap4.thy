@@ -206,4 +206,50 @@ lemma "S w \<Longrightarrow> T w"
   apply ( metis doublT )
 done
 
+
+
+
+type_synonym vname = string
+type_synonym val = int
+type_synonym state = "vname \<Rightarrow> val"
+
+datatype aexp =
+  N val |
+  V vname |
+  Plus aexp aexp
+
+
+fun aval :: "aexp \<Rightarrow> state \<Rightarrow> val" where
+  "aval (N n) s = n" |
+  "aval (V x) s = s x" |
+  "aval (Plus a1 a2) s = aval a1 s + aval a2 s"
+
+inductive aval_r :: "aexp \<Rightarrow> state \<Rightarrow> val \<Rightarrow> bool" where
+  arn : "aval_r ( N n ) s n" |
+  arv : "aval_r ( V x ) s ( s x )" |
+  arp : "aval_r a1 s v1 \<Longrightarrow> aval_r a2 s v2 \<Longrightarrow> aval_r ( Plus a1 a2 ) s ( v1 + v2)"
+
+lemma "aval_r a0 s v \<Longrightarrow> ( aval a0 s = v )"
+  apply ( induction rule: aval_r.induct )
+  apply ( auto )
+done
+
+lemma aval_r_aval : "aval_r a0 s ( aval a0 s )"
+  apply ( induction a0 s rule: aval.induct )
+  apply ( auto )
+  apply ( metis arn )
+  apply ( metis arv )
+  apply ( metis arp )
+done
+
+lemma "aval a0 s = v \<Longrightarrow> aval_r a0 s v"
+  apply ( induction a0 s rule: aval.induct )
+  apply ( auto )
+  apply ( metis arn )
+  apply ( metis arv )
+  apply ( rule arp )
+  apply ( rule aval_r_aval )
+  apply ( rule aval_r_aval )
+done
+
 end
