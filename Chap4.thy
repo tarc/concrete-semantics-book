@@ -163,6 +163,8 @@ inductive T :: "alpha list \<Rightarrow> bool" where
   emptyT  : "T []" |
   alter   : "T w \<Longrightarrow> T v \<Longrightarrow> T ( w @ a # v @ [b] )"
 
+
+
 lemma "T w \<Longrightarrow> S w"
   apply ( induction rule: T.induct )
   apply ( rule emptyS )
@@ -176,9 +178,23 @@ lemma app_emp : "T ([] @ a # w @ [b]) \<Longrightarrow> T ( a # w @ [b])"
   apply ( auto )
 done
 
+lemma assoc_arb : "X ((w @ a # v @ b # wa) @ a # va @ [b]) \<Longrightarrow> X (w @ a # v @ b # wa @ a # va @ [b])"
+  apply ( auto )
+done
+
+
+lemma append_T : "T ts \<Longrightarrow> T v \<Longrightarrow> T w \<Longrightarrow> T (w @ a # v @ b # ts)"
+  apply ( induction rule: T.induct )
+  apply ( metis alter )
+  apply ( rule assoc_arb )
+  apply ( metis alter )
+done
+
 lemma doublT : "T w \<Longrightarrow> T v \<Longrightarrow> T ( w @ v)"
   apply ( induction rule: T.induct )
   apply ( auto )
+  apply ( metis append_T )
+done
 
 lemma "S w \<Longrightarrow> T w"
   apply ( induction rule: S.induct )
@@ -187,5 +203,7 @@ lemma "S w \<Longrightarrow> T w"
   apply ( rule alter )
   apply ( rule emptyT )
   apply ( assumption )
+  apply ( metis doublT )
+done
 
 end
