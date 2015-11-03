@@ -294,12 +294,11 @@ inductive ok :: "nat \<Rightarrow> instr list \<Rightarrow> nat \<Rightarrow> bo
   ok_step : "ok1 n i n1  \<Longrightarrow>  ok n1 is n2  \<Longrightarrow>  ok n ( i # is ) n2"
 
 
-lemma "ok n is n' \<Longrightarrow> length stk = n \<Longrightarrow> length ( exec is s stk ) = n'"
+lemma ok_correct : "ok n is n' \<Longrightarrow> length stk = n \<Longrightarrow> length ( exec is s stk ) = n'"
   apply ( induction arbitrary: stk rule: ok.induct )
   apply ( auto )
   apply ( metis ok1_correct )
 done
-
 
 
 fun comp :: "aexp \<Rightarrow> instr list" where
@@ -307,25 +306,44 @@ fun comp :: "aexp \<Rightarrow> instr list" where
   "comp ( aexp.V x ) = [ LOAD x ]" |
   "comp ( aexp.Plus e1 e2 ) = comp e1 @ comp e2 @ [ ADD ]"
 
-fun stack_size1 :: "instr \<Rightarrow> nat \<Rightarrow> nat" where
-  "stack_size1 ( LOADI c ) n = (n + 1)" |
-  "stack_size1 ( LOAD  x ) n = (n + 1)" |
-  "stack_size1 ADD n = ( n - 1 )"
 
-fun stack_size :: "instr list \<Rightarrow> nat \<Rightarrow> nat" where
-  "stack_size [] n = n" |
-  "stack_size ( i # is ) n = stack_size is ( stack_size1 i n )"
+fun stk :: "nat \<Rightarrow> stack" where
+  "stk 0 = []" |
+  "stk ( Suc n ) = 0 # stk n"
 
-lemma "ok n ( comp a0 ) ( stack_size ( comp a0 ) n )"
-  apply ( induction a0 arbitrary: n rule: comp.induct )
+lemma stk_correct : "length ( stk n ) = n"
+  apply ( induction n rule: stk.induct )
   apply ( auto )
-  apply ( rule ok_step )
-  apply ( rule ok1LOADI )
+done
+
+abbreviation "lexec \<equiv> \<lambda> is s n . length ( exec is s ( stk n ) )"
+
+lemma chain_ok : "
+    ok n  is1  ( lexec is1 s  n ) \<Longrightarrow>
+    ok ( lexec is1 s n )  is2  ( lexec is2 s ( lexec is1 s n ) )  \<Longrightarrow>
+        ok n ( is1 @ is2 ) ( lexec ( is1 @ is2 ) s n )"
+
+  apply ( induction rule: ok.induct )
   apply ( simp )
-  apply ( rule ok_refl )
-  apply ( rule ok_step )
-  apply ( rule ok1LOAD )
+by (metis append_Cons ok_correct ok_step stk_correct)
+
+lemma "ok n ( comp a0 ) ( length ( exec  ( comp a0 )  s ( stk  n ) ) )"
+  apply ( induction a0 arbitrary: n rule: comp.induct )
   apply ( simp )
-  apply ( rule ok_refl )
+  apply ( rule )
+  apply ( rule )
+  apply ( simp add: stk_correct )
+  apply ( rule )
+  apply ( simp )
+  apply ( rule )
+  apply ( rule )
+  apply ( simp add: stk_correct )
+  apply ( rule )
+  apply ( simp )
+  apply ( rule chain_ok )
+  apply ( simp )
+  apply ( rule chain_ok )
+  apply ( simp )
+
 
 end
