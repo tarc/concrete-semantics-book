@@ -277,6 +277,11 @@ fun exec :: "instr list \<Rightarrow> state \<Rightarrow> stack \<Rightarrow> st
   "exec ( i # is ) s stk = exec is s ( exec1 i s stk )"
 
 
+lemma exec_append : "exec ( is1 @ is2 ) s stk = exec is2 s ( exec is1 s stk )"
+  apply ( induction is1 s stk rule: exec.induct )
+  apply ( auto )
+done
+
 inductive ok1 :: "nat \<Rightarrow> instr \<Rightarrow> nat \<Rightarrow> bool" for n where
   ok1LOADI : "ok1 n ( LOADI c ) ( n + 1 )" |
   ok1LOAD  : "ok1 n ( LOAD x ) ( n + 1 )" |
@@ -307,43 +312,119 @@ fun comp :: "aexp \<Rightarrow> instr list" where
   "comp ( aexp.Plus e1 e2 ) = comp e1 @ comp e2 @ [ ADD ]"
 
 
-fun stk :: "nat \<Rightarrow> stack" where
-  "stk 0 = []" |
-  "stk ( Suc n ) = 0 # stk n"
+lemma exec_comp_inc : "length ( exec ( comp a0 ) s stk ) = length stk + 1"
+  apply ( induction a0 arbitrary: stk rule: comp.induct )
+  apply ( auto simp add: exec_append )
+done
 
-lemma stk_correct : "length ( stk n ) = n"
-  apply ( induction n rule: stk.induct )
+
+lemma "ok 0 [LOAD x] (Suc 0)"
+  apply ( rule )
+  apply ( rule )
+  apply ( simp )
+  apply ( rule )
+done
+
+lemma lliadd : "ok 0 [LOAD x, LOADI v, ADD] (Suc 0)"
+  apply ( rule )
+  apply ( rule )
+  apply ( rule )
+  apply ( rule )
+  apply ( simp )
+  apply ( rule )
+  apply ( rule )
+  apply ( simp )
+  apply ( simp )
+  apply ( rule )
+done
+
+lemma liladd : "ok 0 [LOADI x, LOAD v, ADD] (Suc 0)"
+  apply ( rule )
+  apply ( rule )
+  apply ( rule )
+  apply ( rule )
+  apply ( simp )
+  apply ( rule )
+  apply ( rule )
+  apply ( simp )
+  apply ( simp )
+  apply ( rule )
+done
+
+lemma liliadd : "ok 0 [LOADI x, LOADI v, ADD] (Suc 0)"
+  apply ( rule )
+  apply ( rule )
+  apply ( rule )
+  apply ( rule )
+  apply ( simp )
+  apply ( rule )
+  apply ( rule )
+  apply ( simp )
+  apply ( simp )
+  apply ( rule )
+done
+
+lemma "ok (Suc (Suc 0)) [LOAD x, ADD, ADD, LOAD y] (Suc (Suc 0))"
+  apply ( rule )
+  apply ( rule )
+  apply ( rule )
+  apply ( rule )
+  apply ( simp )
+  apply ( rule )
+  apply ( simp )
+  apply ( rule )
+  apply ( simp )
+  apply ( rule )
+  apply ( simp )
+  apply ( rule )
+  apply ( simp )
+  apply ( rule )
+done
+
+
+fun stackn :: "nat \<Rightarrow> stack" where
+  "stackn 0 = []" |
+  "stackn ( Suc n ) = 0 # ( stackn n )"
+
+lemma len_stackn : "length ( stackn n ) = n"
+  apply ( induction n )
   apply ( auto )
 done
 
-abbreviation "lexec \<equiv> \<lambda> is s n . length ( exec is s ( stk n ) )"
+lemma ok_append : "ok n1 is1 n2 \<Longrightarrow> ok n2 is2 n3 \<Longrightarrow> ok n1 (is1 @ is2) n3"
+  apply ( induction arbitrary: is2 n3 rule: ok.induct )
+  apply ( simp_all )
+  apply ( rule )
+  apply ( auto )
+done
 
-lemma chain_ok : "
-    ok n  is1  ( lexec is1 s  n ) \<Longrightarrow>
-    ok ( lexec is1 s n )  is2  ( lexec is2 s ( lexec is1 s n ) )  \<Longrightarrow>
-        ok n ( is1 @ is2 ) ( lexec ( is1 @ is2 ) s n )"
+lemma ok_comp_add : "
+       ( \<And>n . ok n ( comp e1 ) ( Suc n ) ) \<Longrightarrow>
+       ( \<And>n . ok n ( comp e2 ) ( Suc n ) ) \<Longrightarrow>
+            ok n (comp e1 @ comp e2 @ [ADD]) (Suc n)"
 
-  apply ( induction rule: ok.induct )
-  apply ( simp )
-by (metis append_Cons ok_correct ok_step stk_correct)
+  apply ( rule ok_append )
+  apply ( auto )
+  apply ( rule ok_append )
+  apply ( auto )
+  apply ( rule )
+  apply ( simp add: ok1.simps )
+  apply ( rule )
+done
 
-lemma "ok n ( comp a0 ) ( length ( exec  ( comp a0 )  s ( stk  n ) ) )"
-  apply ( induction a0 arbitrary: n rule: comp.induct )
+lemma ok_comp_suc : "ok n ( comp a0 ) ( Suc n )"
+  apply ( induction a0 arbitrary:n rule: comp.induct )
+  apply ( simp add: ok_refl ok_step ok1.simps )
+  apply ( simp add: ok_refl ok_step ok1.simps )
   apply ( simp )
-  apply ( rule )
-  apply ( rule )
-  apply ( simp add: stk_correct )
-  apply ( rule )
-  apply ( simp )
-  apply ( rule )
-  apply ( rule )
-  apply ( simp add: stk_correct )
-  apply ( rule )
-  apply ( simp )
-  apply ( rule chain_ok )
-  apply ( simp )
-  apply ( rule chain_ok )
-  apply ( simp )
+  apply ( metis ok_comp_add )
+done
 
+
+lemma "ok n ( comp a0 ) ( length ( exec ( comp a0 ) s (stackn n) ) )"
+  apply ( induction a0 arbitrary:n rule: comp.induct )
+  apply ( auto simp add: ok1.simps ok_refl ok_step len_stackn exec_comp_inc exec_append)
+  apply ( metis ok_comp_add )
+done
 
 end
