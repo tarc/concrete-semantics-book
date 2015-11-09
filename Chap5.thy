@@ -122,6 +122,22 @@ proof
   qed
 qed
 
+inductive star :: "( 'a \<Rightarrow> 'a \<Rightarrow> bool ) \<Rightarrow> 'a \<Rightarrow> 'a \<Rightarrow> bool" for r where
+  refl  : "star r x x" |
+  step  : "r x y  \<Longrightarrow>  star r y z  \<Longrightarrow>  star r x z"
+
+inductive iter :: "( 'a \<Rightarrow> 'a \<Rightarrow> bool ) \<Rightarrow> nat \<Rightarrow> 'a \<Rightarrow> 'a \<Rightarrow> bool" for r where
+  refl_i : "iter r 0 x x" |
+  step_i : "r x y \<Longrightarrow> iter r n y z \<Longrightarrow> iter r ( n + 1 ) x z"
+
+lemma "iter r n x y \<Longrightarrow> star r x y"
+proof ( induction rule: iter.induct )
+  fix x show "star r x x" by ( simp add: refl )
+  fix x y n z assume "r x y" "star r y z"
+  thus "star r x z" by ( metis step )
+qed
+  
+
 
 
 end
