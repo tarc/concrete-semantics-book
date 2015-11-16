@@ -138,6 +138,164 @@ proof ( induction rule: iter.induct )
 qed
   
 
+fun elems :: "'a list \<Rightarrow> 'a set" where
+  "elems [] = {}" |
+  "elems ( a # as ) = { a } \<union> elems as"
+
+lemma "x \<in> elems xs \<Longrightarrow> \<exists> ys zs. xs = ys @ x # zs \<and> x \<notin> elems ys"
+proof ( induction xs rule: elems.induct )
+  assume "x \<in> elems []"
+  thus "\<exists> ys zs . [] = ys @ x # zs \<and> x \<notin> elems ys"  by simp
+
+  next
+  fix a as assume IH : "(x \<in> elems as \<Longrightarrow> \<exists>ys zs. as = ys @ x # zs \<and> x \<notin> elems ys)"
+               and H : "x \<in> elems (a # as)"
+  thus "\<exists>ys zs. a # as = ys @ x # zs \<and> x \<notin> elems ys"
+
+  proof ( cases "x = a" )
+    assume "x \<noteq> a"
+    hence "x \<in> elems as" using H by auto
+    hence "\<exists> ys zs . as = ys @ x # zs \<and> x \<notin> elems ys" using IH  by auto
+    then obtain ys zs where "as = ys @ x # zs \<and> x \<notin> elems ys" by blast
+      hence "a # as = (a # ys) @ x # zs \<and> x \<notin> elems ( a # ys )" using `x \<noteq> a` by auto
+    thus "\<exists>ys zs. a # as = ys @ x # zs \<and> x \<notin> elems ys" by blast
+
+  next
+    assume "x = a"
+    hence "a # as = [] @ x # as \<and> x \<notin> elems []" by auto
+    thus ?thesis by blast
+
+  qed
+qed
 
 
+
+datatype alpha = a | b
+
+inductive S :: "alpha list \<Rightarrow> bool" where
+  emptyS  : "S []" |
+  middl   : "S w \<Longrightarrow> S ( a # w @ [b] )" |
+  doubl   : "S w \<Longrightarrow> S v \<Longrightarrow> S ( w @ v )"
+
+inductive T :: "alpha list \<Rightarrow> bool" where
+  emptyT  : "T []" |
+  alter   : "T w \<Longrightarrow> T v \<Longrightarrow> T ( w @ a # v @ [b] )"
+
+
+
+lemma TImpS : "T w \<Longrightarrow> S w"
+  apply ( induction rule: T.induct )
+  apply ( rule emptyS )
+  apply ( rule doubl )
+  apply ( assumption )
+  apply ( rule middl )
+  apply ( assumption )
+done
+
+lemma app_emp : "T ([] @ a # w @ [b]) \<Longrightarrow> T ( a # w @ [b])"
+  apply ( auto )
+done
+
+lemma assoc_arb : "X ((w @ a # v @ b # wa) @ a # va @ [b]) \<Longrightarrow> X (w @ a # v @ b # wa @ a # va @ [b])"
+  apply ( auto )
+done
+
+
+lemma append_T : "T ts \<Longrightarrow> T v \<Longrightarrow> T w \<Longrightarrow> T (w @ a # v @ b # ts)"
+  apply ( induction rule: T.induct )
+  apply ( metis alter )
+  apply ( rule assoc_arb )
+  apply ( metis alter )
+done
+
+lemma doublT : "T w \<Longrightarrow> T v \<Longrightarrow> T ( w @ v)"
+  apply ( induction rule: T.induct )
+  apply ( auto )
+  apply ( metis append_T )
+done
+
+lemma SImpT : "S w \<Longrightarrow> T w"
+  apply ( induction rule: S.induct )
+  apply ( rule emptyT )
+  apply ( rule app_emp )
+  apply ( rule alter )
+  apply ( rule emptyT )
+  apply ( assumption )
+  apply ( metis doublT )
+done
+
+lemma "S w = T w" by ( metis SImpT TImpS )
+
+fun balanced :: "nat \<Rightarrow> alpha list \<Rightarrow> bool" where
+  "balanced 0 [] = True" |
+  "balanced _ [] = False" |
+  "balanced 0 ( b # _ ) = False" |
+  "balanced n ( a # w ) = balanced ( Suc n ) w" |
+  "balanced ( Suc n ) ( b # w ) = balanced n w"
+
+lemma "balanced n w \<Longrightarrow> S ( replicate n a @ w )"
+  proof ( induction n w rule: balanced.induct )
+  assume "balanced 0 []" thus "S ( replicate 0 a @ [] )" using emptyS replicate_0 by auto
+
+  next
+  fix v assume
+    H : "balanced ( Suc v ) []"
+    show "S ( replicate ( Suc v ) a @ [] )"
+  proof -
+    have False using H by simp
+    thus ?thesis by metis
+  qed
+
+  next
+  fix as assume
+    H : "balanced 0 ( b # as )"
+    show "S ( replicate 0 a @ b # as )"
+  proof -
+    have False using H by simp
+    thus ?thesis by metis
+  qed
+
+  next
+  fix n w assume
+    IH : "balanced ( Suc n ) w \<Longrightarrow> S ( replicate ( Suc n ) a @ w )" and
+    H  : "balanced n ( a # w )"
+    show "S ( replicate n a @ a # w )"
+  proof -
+    have "balanced ( Suc n ) w" using H by simp
+    hence "S ( replicate ( Suc n ) a @ w )" using IH by metis
+    hence "S ( a # replicate n a @ w )" by simp
+    thus ?thesis using replicate_app_Cons_same by metis
+  qed
+
+  next
+  fix n w assume
+    IH : "balanced n w \<Longrightarrow> S ( replicate n a @ w )" and
+    H  : "balanced ( Suc n ) ( b # w )"
+    show "S ( replicate ( Suc n ) a @ b # w )"
+  proof -
+    have "balanced n w" using H by simp
+    hence "S ( replicate n a @ w )" using IH by metis
+
+    { fix v  w have
+        "S ( v @ w ) \<Longrightarrow> S ( v @ a # b # w )"
+      proof ( induction "v @ w" arbitrary: v w rule: S.induct )
+
+        fix v :: "alpha list" and w assume
+        E : "[] = v @ w"
+        show "S ( v @ a # b # w )"
+        proof -
+          have "S ( a # [] @ [b] )" by ( metis middl emptyS )
+          hence "S ( a # [b] )" by simp
+          moreover have "v=[]" using E by simp
+          moreover have "w=[]" using E by simp
+          ultimately show "S ( v @ a # b # w )" by simp
+        qed
+
+        next
+        fix w v w' assume
+          "S w"
+          "\<And>v w' . w = v @ w' \<Longrightarrow> S ( v @ a # b # w' )"
+          "a # w @ [b] = v @ w'"
+          show "S ( v @ a # b # w' )"
+        proof -
 end
