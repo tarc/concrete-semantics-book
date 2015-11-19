@@ -182,7 +182,6 @@ inductive T :: "alpha list \<Rightarrow> bool" where
   alter   : "T w \<Longrightarrow> T v \<Longrightarrow> T ( w @ a # v @ [b] )"
 
 
-
 lemma TImpS : "T w \<Longrightarrow> S w"
   apply ( induction rule: T.induct )
   apply ( rule emptyS )
@@ -226,12 +225,44 @@ done
 
 lemma "S w = T w" by ( metis SImpT TImpS )
 
+lemma "S ( v @ w ) \<Longrightarrow> S ( v @ a # b # w )"
+proof ( induction "v @ w" arbitrary: v w rule: S.induct )
+
+  fix v :: "alpha list" and w assume
+  E : "[] = v @ w"
+  show "S ( v @ a # b # w )"
+  proof -
+    have "S ( a # [] @ [b] )" by ( metis middl emptyS )
+    hence "S ( a # [b] )" by simp
+    moreover have "v=[]" using E by simp
+    moreover have "w=[]" using E by simp
+    ultimately show "S ( v @ a # b # w )" by simp
+  qed
+
+  next
+  fix w v w' assume
+    H : "S w" and
+    IH : "\<And>v w' . w = v @ w' \<Longrightarrow> S ( v @ a # b # w' )" and
+    EH : "a # w @ [b] = v @ w'"
+    show "S ( v @ a # b # w' )"
+  proof ( cases "v = []" )
+    assume "v = []" show "S ( v @ a # b # w' )"
+    proof -
+      have "w' = a # w @ [b]" using `v = []` EH by simp
+      moreover hence "S ( w' )" using H by ( metis middl )
+      moreover hence "S ( v @ a # [ b ] )" using `v = []` by ( metis append_Nil emptyS middl )
+      ultimately have "S ( v @ [ a , b ] @ w' )" by ( metis doubl append_assoc)
+
+
+
 fun balanced :: "nat \<Rightarrow> alpha list \<Rightarrow> bool" where
   "balanced 0 [] = True" |
   "balanced _ [] = False" |
   "balanced 0 ( b # _ ) = False" |
   "balanced n ( a # w ) = balanced ( Suc n ) w" |
   "balanced ( Suc n ) ( b # w ) = balanced n w"
+
+value "balanced 1 [b]"
 
 lemma "balanced n w \<Longrightarrow> S ( replicate n a @ w )"
   proof ( induction n w rule: balanced.induct )
@@ -276,26 +307,8 @@ lemma "balanced n w \<Longrightarrow> S ( replicate n a @ w )"
     have "balanced n w" using H by simp
     hence "S ( replicate n a @ w )" using IH by metis
 
-    { fix v  w have
-        "S ( v @ w ) \<Longrightarrow> S ( v @ a # b # w )"
-      proof ( induction "v @ w" arbitrary: v w rule: S.induct )
+    
 
-        fix v :: "alpha list" and w assume
-        E : "[] = v @ w"
-        show "S ( v @ a # b # w )"
-        proof -
-          have "S ( a # [] @ [b] )" by ( metis middl emptyS )
-          hence "S ( a # [b] )" by simp
-          moreover have "v=[]" using E by simp
-          moreover have "w=[]" using E by simp
-          ultimately show "S ( v @ a # b # w )" by simp
-        qed
 
-        next
-        fix w v w' assume
-          "S w"
-          "\<And>v w' . w = v @ w' \<Longrightarrow> S ( v @ a # b # w' )"
-          "a # w @ [b] = v @ w'"
-          show "S ( v @ a # b # w' )"
-        proof -
+
 end
