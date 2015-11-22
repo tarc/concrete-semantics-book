@@ -223,14 +223,16 @@ lemma SImpT : "S w \<Longrightarrow> T w"
   apply ( metis doublT )
 done
 
+thm append_eq_append_conv_if leD
+
 lemma "S w = T w" by ( metis SImpT TImpS )
 
 lemma "S ( v @ w ) \<Longrightarrow> S ( v @ a # b # w )"
 proof ( induction "v @ w" arbitrary: v w rule: S.induct )
 
   fix v :: "alpha list" and w assume
-  E : "[] = v @ w"
-  show "S ( v @ a # b # w )"
+    E : "[] = v @ w"
+    show "S ( v @ a # b # w )"
   proof -
     have "S ( a # [] @ [b] )" by ( metis middl emptyS )
     hence "S ( a # [b] )" by simp
@@ -251,8 +253,89 @@ proof ( induction "v @ w" arbitrary: v w rule: S.induct )
       have "w' = a # w @ [b]" using `v = []` EH by simp
       moreover hence "S ( w' )" using H by ( metis middl )
       moreover hence "S ( v @ a # [ b ] )" using `v = []` by ( metis append_Nil emptyS middl )
-      ultimately have "S ( v @ [ a , b ] @ w' )" by ( metis doubl append_assoc)
+      ultimately have "S ( ( v @ a # [ b ] ) @ w' )" by ( metis doubl )
+      thus "S ( v @ a # b # w' )" by simp
+    qed
 
+    next
+    assume "v \<noteq> []" show "S ( v @ a # b # w' )"
+    proof ( cases "w' = []" )
+      assume "w' = []" show "S ( v @ a # b # w' )"
+      proof -
+        have "v = a # w @ [b]" using `w' = []` EH by simp
+        moreover hence "S ( v )" using H by ( metis middl )
+        moreover hence "S ( v @ a # [ b ] )" by ( metis emptyS middl doubl append_Nil )
+        ultimately have "S ( v @ a # [ b ] @ w' )" using `w' = []` by simp
+        thus "S ( v @ a # b # w' )" by simp
+      qed
+
+      next
+      assume "w' \<noteq> []" show "S ( v @ a # b # w' )"
+      proof -
+        have "v @ w' = ( hd v ) # ( tl v ) @ w'" using `v \<noteq> []` by simp
+        hence V: "w @ [ b ] = tl v @ w' \<and> hd v = a" using `v \<noteq> []` EH by ( metis list.inject )
+        hence "w @ [ b ] = ( tl v @ butlast w' ) @ [ last w' ]" using `w' \<noteq> []` by simp
+        hence W': "w = tl v @ butlast w' \<and> last w' = b" by ( metis append1_eq_conv )
+        hence "S ( tl v @ butlast w' )" using H by metis
+        hence "S ( tl v @ a # b # butlast w' )" using IH W' by metis
+        hence "S ( a # (tl v @ a # b # butlast w' ) @ [ b ] )" by ( metis middl )
+        hence "S ( ( a # tl v ) @ [a,b] @ ( butlast w' @ [ b ] ) )" by simp
+        moreover have "a # tl v = v" using V list.collapse `v \<noteq> []` by force
+        moreover have "butlast w' @ [ b ] = w'" using W' append_butlast_last_id `w' \<noteq> []` by force
+        ultimately show "S (  v @ a # b # w' )" by simp
+      qed
+    qed
+  qed
+
+  next
+  fix w v p s assume
+    W : "S w"
+    "\<And>p s. w = p @ s \<Longrightarrow> S ( p @ a # b # s )" and
+    V : "S v"
+    "\<And>p s. v = p @ s \<Longrightarrow> S ( p @ a # b # s )" and
+    EH : "w @ v = p @ s"
+    show "S ( p @ a # b # s )"
+  proof ( cases "length p = length w" )
+    assume LH : "length p = length w" show "S ( p @ a # b # s )"
+    proof -
+      have "S ( a # [ b ] )" by ( metis emptyS middl append_Nil)
+      moreover have "w = p \<and> v = s" using EH LH by simp
+      ultimately have "S ( p @ [ a , b ] @ s )" using W V by ( metis doubl )
+      thus ?thesis by simp
+    qed
+
+    next
+    assume LD : "length p \<noteq> length w" show "S ( p @ a # b # s )"
+    proof ( cases "length p < length w" )
+      assume LPLTLW : "length p < length w" show "S ( p @ a # b # s )" 
+      proof -
+        have "w = take ( length p ) w @ drop ( length p ) w" using LPLTLW by simp
+        moreover have PS : "p = take ( length p ) w \<and>
+                              s = drop ( length p ) w @ v"
+                                using EH LPLTLW by (metis append_eq_append_conv_if leD)
+        ultimately have "w = p @ drop ( length p ) w" by simp
+        hence "S ( p @ a # b # drop ( length p ) w )" using W  by metis
+        hence "S ( ( p @ a # b # drop ( length p ) w ) @ v )" using V by ( metis doubl )
+        thus "S ( p @ a # b # s )" using PS by simp
+      qed
+
+      next
+      assume LNL : "\<not> length p < length w" show "S ( p @ a # b # s )"
+      proof -
+        have "length p > length w" using LD LNL by ( metis linorder_class.less_linear )
+        moreover hence "length w = length ( take ( length w ) p )" by simp
+        moreover have "w @ v = take ( length w ) p @ drop ( length w ) p @ s" using EH by simp
+        ultimately have 
+          "w = take ( length w ) p \<and>
+            v = drop ( length w ) p @ s" by ( metis append_eq_append_conv )
+        moreover hence "S ( drop ( length w ) p @ a # b # s )" using V by metis
+        ultimately have "S ( take ( length w ) p @ drop ( length w ) p @ a # b # s )"
+          using W by ( metis doubl )
+        thus ?thesis by ( metis append_take_drop_id  append_assoc )
+      qed
+    qed
+  qed
+qed
 
 
 fun balanced :: "nat \<Rightarrow> alpha list \<Rightarrow> bool" where
