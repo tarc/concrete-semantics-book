@@ -227,7 +227,7 @@ thm append_eq_append_conv_if leD
 
 lemma "S w = T w" by ( metis SImpT TImpS )
 
-lemma "S ( v @ w ) \<Longrightarrow> S ( v @ a # b # w )"
+lemma ab_inter : "S ( v @ w ) \<Longrightarrow> S ( v @ a # b # w )"
 proof ( induction "v @ w" arbitrary: v w rule: S.induct )
 
   fix v :: "alpha list" and w assume
@@ -389,9 +389,11 @@ lemma "balanced n w \<Longrightarrow> S ( replicate n a @ w )"
   proof -
     have "balanced n w" using H by simp
     hence "S ( replicate n a @ w )" using IH by metis
-
-    
-
-
+    hence "S ( replicate n a @ a # b # w )" using ab_inter by metis
+    hence "S ( ( replicate n a @ [ a ] ) @ b # w )" by simp
+    hence "S ( ( a # replicate n a ) @ b # w )" by ( metis replicate_append_same )
+    thus ?thesis by simp
+  qed
+qed
 
 end
